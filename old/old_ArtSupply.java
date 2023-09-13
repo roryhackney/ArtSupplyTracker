@@ -6,7 +6,7 @@ import java.util.TreeSet;
 /**
  * Top most parent class of all art supply categories
  */
-public class ArtSupply implements Comparable<ArtSupply> {
+public class old_ArtSupply implements Comparable<old_ArtSupply> {
 
     /**
      * Categories of art supplies
@@ -86,17 +86,17 @@ public class ArtSupply implements Comparable<ArtSupply> {
      * @param tags Tags associated with this ArtSupply, ie Favorites; default is no tags
      */
     public ArtSupply(String title, String location, String description, String imageFile, int quantity, Categories category, Tags[] tags) {
-        Helper.rejectNullOrBlank(title, "title");
+        old_Helper.rejectNullOrBlank(title, "title");
         setTitle(title);
 
-        Helper.rejectNullOrBlank(location, "location");
+        old_Helper.rejectNullOrBlank(location, "location");
         setLocation(location);
 
         setDescription(description);
         setImageFileName(imageFile);
         setQuantity(quantity);
 
-        Helper.rejectNull(category, "category");
+        old_Helper.rejectNull(category, "category");
         setCategory(category);
 
         this.tags = new TreeSet<>();

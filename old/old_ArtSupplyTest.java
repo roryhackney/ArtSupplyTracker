@@ -1,8 +1,6 @@
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-
 public class ArtSupplyTest {
     private final ArtSupply marker = new ArtSupply("Red Marker", "Closet", "red marker", "red_mark.jpg",
             2, ArtSupply.Categories.DRAWING, new ArtSupply.Tags[] {ArtSupply.Tags.FAVORITE});

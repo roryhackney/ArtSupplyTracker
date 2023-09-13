@@ -1,6 +1,6 @@
 /** Helper methods */
 
-public class Helper {
+public class old_Helper {
     public static void rejectNullOrBlank(String s, String context) {
         rejectNull(s, context);
         rejectBlank(s, context);
