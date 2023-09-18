@@ -25,16 +25,22 @@ public class Main {
             Scanner userScanner;
             try {
                 userScanner = new Scanner(userFile);
-            } catch (FileNotFoundException ignored) {}
+            } catch (FileNotFoundException error) {
+                return;
+            }
             String alias = userScanner.nextLine().strip();
             Boolean random = userScanner.nextBoolean();
             HashSet<String> suggestions = new HashSet<>();
-            while (userScanner.hasNext()) {
-                suggestions.add(userScanner.next());
+            while (userScanner.hasNextLine()) {
+                suggestions.add(userScanner.nextLine().strip());
             }
             User user = new User(alias, random, suggestions);
+            userScanner.close();
         } else {
             //new gui -> send user data -> process user data -> replace file
+            SubjectInterface subject = new Subject();
+            new UserRegisterGui(subject);
+            new Observer(subject);
         }
 //        if (! userFile.isFile()) {
 //

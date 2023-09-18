@@ -32,9 +32,7 @@ public class User {
     }
 
     public User() {
-        setAlias("");
-        setRandom(true);
-        resetRandomAliases();
+        this("", true, null);
     }
     public User(String alias, Boolean random, HashSet<String> randomAliases) {
         this.randomAliases = new ArrayList<>();
