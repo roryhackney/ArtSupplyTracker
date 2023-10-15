@@ -39,9 +39,10 @@ public class Main {
             }
             String alias = userScanner.nextLine().strip();
             boolean random = userScanner.nextBoolean();
-            HashSet<String> suggestions = new HashSet<>();
+            String[] suggestions = new String[User.ALIASES_LIMIT];
+            int index = 0;
             while (userScanner.hasNextLine()) {
-                suggestions.add(userScanner.nextLine().strip());
+                suggestions[index++] = userScanner.nextLine().strip();
             }
             User user = new User(alias, random, suggestions);
             userScanner.close();

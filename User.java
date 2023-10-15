@@ -5,10 +5,10 @@ import java.util.HashSet;
  * User class, mainly used for displaying chosen alias or different random aliases, set by system or user
  */
 public class User {
-    /** Main alias to be used unless random aliases are preferred */
+    /** Main alias to be used, unless random pool is preferred and this is blank */
     private String alias;
 
-    /** True if random aliases are preferred, false if main alias is preferred */
+    /** True if random aliases are preferred or alias is blank, false if main alias is preferred */
     private boolean random;
 
     /** List of aliases that could be selected for random display */
@@ -23,11 +23,10 @@ public class User {
     /** Maximum number of random aliases a user can save */
     public static final int ALIASES_LIMIT;
 
-
     //initial limits and suggestions set
     static {
         LENGTH_LIMIT = 50;
-        ALIASES_LIMIT = 20;
+        ALIASES_LIMIT = 21;
 
         suggestions = new HashSet<>(20);
         suggestions.add("Dark One");
@@ -59,39 +58,34 @@ public class User {
 
     /**
      * More complex constructor
-     * @param alias Main alias to be displayed if random is false and this is not null/blank;
+     * @param alias Main alias to be displayed if random is false, or as part of the random pool if not null/blank;
      *              null or blank sets alias to blank and random to true
-     * @param random Whether to display randomAliases (true) or main alias (false)
+     * @param random Whether to display all random aliases, including alias (true) or main alias only (false)
      * @param randomAliases Random aliases to be displayed if random is true or alias is null/blank
      */
-    public User(String alias, boolean random, HashSet<String> randomAliases) {
-        this.randomAliases = new ArrayList<>();
-        //add all the given aliases to the random options
-        if (randomAliases != null) {
-            for (String oneAlias : randomAliases) {
-                addRandomAlias(oneAlias);
-            }
-        }
-        //if there are no aliases, add suggested aliases to random options
-        if (getAllRandomAliases().length == 0) this.randomAliases.addAll(suggestions);
-
-        setRandom(random);
-        //set random to true if invalid alias
+    public User(String alias, boolean random, String[] randomAliases) {
         setAlias(alias);
-        //if valid, add alias to random options
-        addRandomAlias(alias);
-    }
+        setRandom(random);
 
-    /** Returns a random alias, or the main alias if not blank and random is false */
-    public String getAlias() {
-        if (getRandom() || alias.isBlank()) {
-            return getRandomAlias();
-        }
-        return alias;
+        //sets the random options to given randomAliases if there's at least one, otherwise set to suggestions
+        if (! replaceRandomAliases(randomAliases)) resetRandomAliases();
     }
 
     /**
-     * Sets a new main alias. If null or blank, sets to blank and sets random to true.
+     * Returns the main alias
+     * @return the main alias of the user, which may be an empty String if unset
+     */
+    public String getAlias() {
+        return alias;
+    }
+
+    /** Returns whether random is true or false */
+    public boolean getRandom() {
+        return random;
+    }
+
+    /**
+     * Sets a new main alias. If null or blank, sets to empty String and sets random to true.
      * @param alias Main alias of the User to display; if null or blank, random aliases will be displayed instead
      */
     public void setAlias(String alias) {
@@ -103,35 +97,12 @@ public class User {
         }
     }
 
-    /** Returns whether random is true or false */
-    public boolean getRandom() {
-        return random;
-    }
-
-    /** Sets random */
-    public void setRandom(boolean random) {
-        this.random = random;
-    }
-
-    /** Returns an array of all random aliases */
-    public String[] getAllRandomAliases() {
-        return randomAliases.toArray(new String[0]);
-    }
-
-    /** Returns a random alias from the list */
-    public String getRandomAlias() {
-        int index = (int) (Math.random() * randomAliases.size());
-        return getRandomAlias(index);
-    }
-
     /**
-     * Returns the alias from randomAliases at the index given, or a random alias if invalid index is given
-     * @param index position in the array to retrieve; should be 0 through numRandomAliases() - 1
-     * @return the alias at the given index, or a random alias if an invalid index is given
+     * Sets random
+     * @param random whether to use random aliases; if alias is null/blank, must be true
      */
-    public String getRandomAlias(int index) {
-        if (index < 0 || index >= numRandomAliases()) return getRandomAlias();
-        return randomAliases.get(index);
+    public void setRandom(boolean random) {
+        if (! alias.isBlank()) this.random = random;
     }
 
     /** Returns the number of random aliases */
@@ -139,35 +110,9 @@ public class User {
         return randomAliases.size();
     }
 
-    /**
-     * Adds a new alias to the pool of random aliases
-     * @param alias the alias to add; will only be added if not null, not blank, and not a duplicate
-     * @return whether the alias was successfully added
-     */
-    public boolean addRandomAlias(String alias) {
-        if (alias != null && ! alias.isBlank() && ! randomAliases.contains(alias) &&  alias.length() <= LENGTH_LIMIT) {
-            randomAliases.add(alias);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Removes an alias from the pool of random aliases
-     * @param alias the alias to remove; will only be removed if it exists already
-     * @return whether the alias was removed
-     */
-    public boolean removeRandomAlias(String alias) {
-        return randomAliases.remove(alias);
-    }
-
-    /**
-     * Removes an alias from the pool of random aliases at the index given
-     * @param index the position at which to remove a random alias; should be 0 through numRandomAliases() - 1
-     * @return the alias that was removed, or null if not removed
-     */
-    public String removeRandomAlias(int index) {
-        return randomAliases.remove(index);
+    /** Returns an array of all random aliases */
+    public String[] getAllRandomAliases() {
+        return randomAliases.toArray(new String[0]);
     }
 
     /**
@@ -175,5 +120,63 @@ public class User {
      */
     public void resetRandomAliases() {
         randomAliases = new ArrayList<>(suggestions);
+    }
+
+    /**
+     * Adds a new alias to the pool of random aliases
+     * @param alias the alias to add; will only be added if not null, not blank, not a duplicate, and not longer than LENGTH_LIMIT
+     * @return whether the alias was successfully added
+     */
+    public boolean addRandomAlias(String alias) {
+        boolean success = false;
+        if (alias != null && ! alias.isBlank() && ! randomAliases.contains(alias) && alias.length() <= LENGTH_LIMIT) {
+            success = randomAliases.add(alias);
+        }
+        return success;
+    }
+
+    /**
+     * Replaces the pool of random aliases with a new one; there must be at least one valid alias
+     * @param randomAliases array of random aliases to replace with; null/empty array or values will not be used
+     * @return whether the randomAliases were successfully replaced
+     */
+    public boolean replaceRandomAliases(String[] randomAliases) {
+        boolean success = false;
+        if (randomAliases != null && randomAliases.length != 0) {
+            ArrayList<String> orig = this.randomAliases;
+            this.randomAliases = new ArrayList<>();
+            for (String alias : randomAliases) {
+                addRandomAlias(alias);
+            }
+            if (! this.randomAliases.isEmpty()) {
+                success = true;
+            } else {
+                //no valid aliases, put the old ones back
+                this.randomAliases = orig;
+            }
+        }
+        return success;
+    }
+
+    /**
+     * Returns a random alias for display. If random is false, returns alias.
+     * Else, return a random alias which may include alias if not blank.
+     * */
+    public String getAnyRandomAlias() {
+        //either random should be true or alias should not be blank
+        assert (random || ! alias.isBlank());
+        String alias = "";
+        //if random is set to false get the main alias
+        if (! random) return getAlias();
+
+        //get random number between 0 and number of aliases (inclusive)
+        int numItems = numRandomAliases();
+        if (getAlias().isBlank()) numItems++;
+        int index = (int) (Math.random() * ++numItems);
+
+        //if index is bigger than array max, get main alias
+        if (index == numItems) return getAlias();
+        //otherwise get the random alias
+        return randomAliases.get(index);
     }
 }
