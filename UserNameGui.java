@@ -1,7 +1,14 @@
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.util.Arrays;
+import java.util.HashSet;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumn;
 
 /** User Name Settings GUI which sends user selections to its Subject */
 public class UserNameGui extends GuiClass {
@@ -15,22 +22,23 @@ public class UserNameGui extends GuiClass {
         super(subject);
         setTitle("Username Settings | Art Supply Manager");
         final int FORM_WIDTH_MAX = 700;
+        final int FORM_WIDTH_MIN = 400;
         final int INPUT_HEIGHT_MAX = 20;
 
         //prevent window from resizes smaller than the form
-        setMinimumSize(new Dimension(400, 600));
+        setMinimumSize(new Dimension(FORM_WIDTH_MIN + 20, 600));
 
-        //random greeting will display random greeting + alias if user already exists
-        String[] greetings = new String[] {"Welcome", "Hello", "Greetings", "Hi"};
-        int index = (int) (Math.random() * (greetings.length));
-        JLabel welcomeMessage = new HeadingLabel("");
-        //creates a default user with random aliases if no user exists yet
+        //creates a welcome message and default user if none exists
+        JLabel welcomeMessage;
         if (user == null) {
-            welcomeMessage.setText(greetings[index] + "!");
+            //creates a default user with random aliases if no user exists yet
             user = new User();
+            welcomeMessage = new JLabel(user.randomWelcomeMessage(false));
         } else {
-            welcomeMessage.setText(greetings[index] + ", " + user.getAlias() + "!");
+            welcomeMessage = new JLabel(user.randomWelcomeMessage(true));
         }
+        //center message
+        welcomeMessage.setHorizontalAlignment(SwingConstants.CENTER);
         getPanel().add(welcomeMessage, BorderLayout.NORTH);
 
         //centers form horizontally between expandable whitespace
@@ -49,10 +57,12 @@ public class UserNameGui extends GuiClass {
 
         //form: set main alias
         JLabel aliasLabel = new JLabel("What would you like to be called? (optional)");
-        JTextField alias = new JTextField(20);
+        JTextField alias = new JTextField();
         //textField should be no wider than form, no stretching vertically
         alias.setMaximumSize(new Dimension(FORM_WIDTH_MAX, INPUT_HEIGHT_MAX));
         aliasLabel.setLabelFor(alias);
+        //when you click the label it focuses the input box
+        GuiHelpers.makeLabelFocusComponent(aliasLabel, alias);
         form.add(aliasLabel);
         form.add(alias);
 
@@ -63,23 +73,28 @@ public class UserNameGui extends GuiClass {
         //form: editable table of random aliases (used only if random is true)
         JLabel randomAliasesLabel = new JLabel("What random names would you like to use?");
         JLabel limit = new JLabel(String.format("(up to %s names, %s characters each)", User.ALIASES_LIMIT, User.LENGTH_LIMIT));
-        JTable aliasTable = new JTable(User.ALIASES_LIMIT + 1, 2);
-        aliasTable.setTableHeader(null);
-        //first row is main alias
-        aliasTable.setValueAt(alias.getText(), 0, 0);
-        //fill next rows with user's saved aliases, empty rows at bottom if space remains
-        int numRows = user.numRandomAliases() + 1;
-        for (int row = 1; row < numRows; row++) {
-            aliasTable.setValueAt(user.getRandomAlias(row - 1), row, 0);
-            //TODO: add clear button to second column for each alias
-//            JButton button = new JButton("X");
-//            button.addActionListener(new ActionListener() {
-//                @Override
-//                public void actionPerformed(ActionEvent e) {
-//                    aliasTable.setValueAt("", aliasTable.getSelectedRow(), 0);
-//                }
-//            });
+        //TODO: add clear all button to table
+        //TODO: add reset button to table (uses suggestions)
+        DefaultTableModel model = new DefaultTableModel(new Object[] {"Aliases", " "}, User.ALIASES_LIMIT);
+        JTable aliasTable = new JTable(model);
+        aliasTable.setPreferredSize(new Dimension(FORM_WIDTH_MAX - 20, 0));
+
+        //fill rows with user's saved aliases, empty rows at bottom if space remains
+        int numRows = user.numRandomAliases();
+        for (int row = 0; row < numRows; row++) {
+            aliasTable.setValueAt(user.getRandomAliasAt(row), row, 0);
         }
+
+        //add a clear button for each row in the second column
+        TableColumn clearColumn = aliasTable.getColumn(" ");
+        clearColumn.setCellRenderer(new TableColumnClearButtons(aliasTable));
+        clearColumn.setCellEditor(new TableColumnClearButtons(aliasTable));
+
+        //column sizes
+        clearColumn.setPreferredWidth((int)(FORM_WIDTH_MAX * 0.25));
+        aliasTable.getColumn("Aliases").setPreferredWidth((int)(FORM_WIDTH_MAX * 0.75));
+
+        //add them to the form
         randomAliasesLabel.setLabelFor(aliasTable);
         form.add(randomAliasesLabel);
         form.add(limit);
@@ -98,18 +113,18 @@ public class UserNameGui extends GuiClass {
 
         //action listeners
 
-        //if user enters main alias, when they click away add it to the random names table
-        alias.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                super.focusLost(e);
-                aliasTable.setValueAt(alias.getText(), 0, 0);
-            }
-        });
-        //also when they press enter
-        alias.addActionListener(e -> aliasTable.setValueAt(alias.getText(), 0, 0));
+        //never mind i don't want the main alias duplicated in the table thx though
+//        //if user enters main alias, when they click away add it to the random names table
+//        alias.addFocusListener(new FocusAdapter() {
+//            @Override
+//            public void focusLost(FocusEvent e) {
+//                super.focusLost(e);
+//                aliasTable.setValueAt(alias.getText(), 0, 0);
+//            }
+//        });
+//        //also when they press enter
+//        alias.addActionListener(e -> aliasTable.setValueAt(alias.getText(), 0, 0));
 
-        //TODO: if user changes first row, it should change alias also
 
         //if random is unchecked, disable table
         random.addActionListener(e -> {
@@ -123,9 +138,35 @@ public class UserNameGui extends GuiClass {
                     }
                 });
 
-        //submit button sends data to subject
-        submit.addActionListener(e -> getSubject().setData());
 
+        //copy user for submit listener
+        final User finalUser = user;
+
+        //submit button validates data, if valid sends data to subject
+        submit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                getSubject().setData();
+
+                //get all the aliases from the table, removing duplicates, blanks, same as alias. redisplay
+                int aliasesLimit = User.ALIASES_LIMIT;
+                String[] tableAliases = new String[aliasesLimit];
+                for (int row = 0; row < aliasesLimit; row++) {
+                    tableAliases[row] = (String) aliasTable.getValueAt(row, 0);
+                }
+                //if there were no valid aliases at all, clear left column
+                if (! finalUser.replaceRandomAliases(tableAliases)) {
+                    //TODO: clear column 0
+                    int x = 5;
+                }
+                //if random is false and alias is blank, warn and retry
+                //if table empty and alias is blank, warn and retry
+                //if random is false and table has data not same as user randomAliases, warn of loss of aliases
+                //overwrite alias
+                //overwrite random
+                //if random, replace user randomAliases pool
+            }
+        });
         //center window on screen
         setLocationRelativeTo(null);
         setVisible(true);

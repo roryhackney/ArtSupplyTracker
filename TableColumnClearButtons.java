@@ -10,11 +10,11 @@ import java.util.EventObject;
 /**
  * Ok I'm going to TRY to create a custom one column table class with clear buttons on the right0
  */
-public class SingleColumnTableWithClearButtons implements TableCellEditor, TableCellRenderer {
-    JButton clearButton;
-    int row;
+public class TableColumnClearButtons implements TableCellEditor, TableCellRenderer {
+    private JButton clearButton;
+    private int row;
 
-    public SingleColumnTableWithClearButtons(JTable table) {
+    public TableColumnClearButtons(JTable table) {
         clearButton = new JButton("Clear");
         clearButton.addActionListener(new ActionListener() {
             @Override

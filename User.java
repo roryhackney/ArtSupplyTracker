@@ -1,3 +1,5 @@
+import javax.swing.*;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -17,6 +19,9 @@ public class User {
     /** initial system suggested random aliases, used if user does not set any */
     private final static HashSet<String> suggestions;
 
+    /** possible welcome messages to greet the user */
+    private final static String[] greetings;
+
     /** Maximum number of characters an alias can have */
     public static final int LENGTH_LIMIT;
 
@@ -26,7 +31,7 @@ public class User {
     //initial limits and suggestions set
     static {
         LENGTH_LIMIT = 50;
-        ALIASES_LIMIT = 21;
+        ALIASES_LIMIT = 20;
 
         suggestions = new HashSet<>(20);
         suggestions.add("Dark One");
@@ -49,6 +54,8 @@ public class User {
         suggestions.add("Muddy Paint Water");
         suggestions.add("Steamed Pork Bun");
         suggestions.add("X");
+
+        greetings = new String[] {"Welcome", "Hello", "Greetings", "Hi"};
     }
 
     /** Basic constructor, sets main alias to blank, random to true, and randomAliases to system suggestions */
@@ -79,11 +86,6 @@ public class User {
         return alias;
     }
 
-    /** Returns whether random is true or false */
-    public boolean getRandom() {
-        return random;
-    }
-
     /**
      * Sets a new main alias. If null or blank, sets to empty String and sets random to true.
      * @param alias Main alias of the User to display; if null or blank, random aliases will be displayed instead
@@ -95,6 +97,11 @@ public class User {
         } else {
             this.alias = alias;
         }
+    }
+
+    /** Returns whether random is true or false */
+    public boolean getRandom() {
+        return random;
     }
 
     /**
@@ -124,12 +131,17 @@ public class User {
 
     /**
      * Adds a new alias to the pool of random aliases
-     * @param alias the alias to add; will only be added if not null, not blank, not a duplicate, and not longer than LENGTH_LIMIT
+     * @param alias the alias to add; will only be added if not null, not blank, not a duplicate,
+     *              not longer than LENGTH_LIMIT, and adding will not increase the set size beyond ALIASES_LIMIT
      * @return whether the alias was successfully added
      */
     public boolean addRandomAlias(String alias) {
         boolean success = false;
-        if (alias != null && ! alias.isBlank() && ! randomAliases.contains(alias) && alias.length() <= LENGTH_LIMIT) {
+        if (alias != null &&
+                ! alias.isBlank() &&
+                ! randomAliases.contains(alias) &&
+                alias.length() <= LENGTH_LIMIT &&
+                numRandomAliases() < ALIASES_LIMIT) {
             success = randomAliases.add(alias);
         }
         return success;
@@ -159,24 +171,52 @@ public class User {
     }
 
     /**
+     * Gets an alias from the random pool at the given index (main alias not included)
+     * @param index position at which to retrieve the alias
+     * @return the alias at the given index
+     */
+    public String getRandomAliasAt(int index) {
+        return randomAliases.get(index);
+    }
+
+    /**
      * Returns a random alias for display. If random is false, returns alias.
      * Else, return a random alias which may include alias if not blank.
-     * */
+     * @return a random alias or the main alias
+     */
     public String getAnyRandomAlias() {
         //either random should be true or alias should not be blank
         assert (random || ! alias.isBlank());
-        String alias = "";
-        //if random is set to false get the main alias
-        if (! random) return getAlias();
+        String alias = getAlias();
+        //only change from main alias if random is set to true
+        if (random) {
+            //get random number between 0 and number of aliases (inclusive)
+            //max bound (not included)
+            int maxIndex = numRandomAliases();
+            //if main alias is not blank, add 1 to max
+            if (! getAlias().isBlank()) maxIndex++;
+            //get random number 0 to max
+            int index = (int) (Math.random() * maxIndex);
 
-        //get random number between 0 and number of aliases (inclusive)
-        int numItems = numRandomAliases();
-        if (getAlias().isBlank()) numItems++;
-        int index = (int) (Math.random() * ++numItems);
+            //if index is less than array max + 1, return random alias
+            if (index < numRandomAliases()) {
+                //get the random alias at the index
+                alias = getRandomAliasAt(index);
+            }
+        }
+        return alias;
+    }
 
-        //if index is bigger than array max, get main alias
-        if (index == numItems) return getAlias();
-        //otherwise get the random alias
-        return randomAliases.get(index);
+    /**
+     * Returns a random welcome message for the user
+     */
+    public String randomWelcomeMessage(boolean displayName) {
+        String greeting = greetings[(int)(Math.random() * (greetings.length))];
+        if (! displayName) {
+            greeting += "!";
+        } else {
+            greeting += getAnyRandomAlias() + "!";
+        }
+        return greeting;
     }
 }
